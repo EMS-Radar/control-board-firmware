@@ -29,6 +29,7 @@
 #define INTENSITY 'I'
 #define TIME 'T'
 #define OPTION 'O'
+#define ELECTRODE 'E'
 
 class EMSSystem {
 public:
@@ -52,6 +53,8 @@ private:
 	uint8_t maximum_channel_count;
 	uint8_t current_channel_count;
 	bool isInRange(int channel);
+    uint16_t currentElectrodes;
+    void setSwitchingBoard(uint16_t mask);
 };
 
 #endif /* EMSSYSTEM_H_ */

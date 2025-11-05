@@ -135,10 +135,8 @@ void loop() {
 
 			char c = Serial.read();
 			debug_Toolkit(c);
-
 		}
 	}
-
 }
 
 //Convert-functions for HEX-Strings "4D"->"M"

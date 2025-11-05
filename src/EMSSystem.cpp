@@ -22,184 +22,232 @@
 #include "EMSSystem.h"
 
 EMSSystem::EMSSystem(uint8_t channels) {
-	emsChannels = (EMSChannel**) malloc(channels * sizeof(EMSChannel*));
-	maximum_channel_count = channels;
-	current_channel_count = 0;
+    emsChannels = (EMSChannel**) malloc(channels * sizeof(EMSChannel*));
+    maximum_channel_count = channels;
+    current_channel_count = 0;
+    currentElectrodes = 0;
 }
 
 EMSSystem::~EMSSystem() {
-	free(emsChannels);
+    free(emsChannels);
 }
 
 void EMSSystem::addChannelToSystem(EMSChannel *emsChannel) {
-	if (current_channel_count < maximum_channel_count) {
-		emsChannels[current_channel_count] = emsChannel;
-		current_channel_count++;
-	}
+    if (current_channel_count < maximum_channel_count) {
+        emsChannels[current_channel_count] = emsChannel;
+        current_channel_count++;
+    }
 }
 
 // get the next number out of a String object and return it
 int EMSSystem::getNextNumberOfString(String *command, uint8_t startIndex) {
-	int value = 0;
-	bool valid = false;
-	// Select the number in the string
-	for (uint8_t i = startIndex + 1; i < command->length(); i++) {
-		char tmp = command->charAt(i);
-		if (tmp >= '0' && tmp <= '9') {
-			value = value * 10 + (tmp - '0');
-			valid = true;
-		} else {
-			break;
-		}
-	}
-	if (valid)
-		return value;
-	else
-		return -1;
+    int value = 0;
+    bool valid = false;
+    // Select the number in the string
+    for (uint8_t i = startIndex + 1; i < command->length(); i++) {
+        char tmp = command->charAt(i);
+        if (tmp >= '0' && tmp <= '9') {
+            value = value * 10 + (tmp - '0');
+            valid = true;
+        } else {
+            break;
+        }
+    }
+    if (valid)
+        return value;
+    else
+        return -1;
 }
 
 void EMSSystem::doActionCommand(String *command) {
-	int seperatorChannel = -1;
-	int seperatorSignalLength = -1;
-	int seperatorSignalIntensity = -1;
+    int seperatorChannel = -1;
+    int seperatorSignalLength = -1;
+    int seperatorSignalIntensity = -1;
+    int seperatorElectrodes = -1;
 
-	if (command->length() > 0) {
+    if (command->length() > 0) {
 
-		// Channel
-		seperatorChannel = command->indexOf(CHANNEL);
-		int currentChannel = -1;
+        // Channel
+        seperatorChannel = command->indexOf(CHANNEL);
+        int currentChannel = -1;
 
-		if (seperatorChannel != -1) {
+        if (seperatorChannel != -1) {
 
-			currentChannel = getNextNumberOfString(command, seperatorChannel);
-			//Serial.print("Channel");
-			//Serial.println(currentChannel);
-		}
+            currentChannel = getNextNumberOfString(command, seperatorChannel);
+            //Serial.print("Channel");
+            //Serial.println(currentChannel);
+        }
 
-		// Signal length onTime
-		seperatorSignalLength = command->indexOf(TIME);
-		int signalLength = -1;
-		if (seperatorSignalLength != -1) {
-			signalLength = getNextNumberOfString(command,
-					seperatorSignalLength);
-			if (signalLength > 5000) {
-				//signaleLength max 5000ms
-				signalLength = 5000;
-			}
-			emsChannels[currentChannel]->setSignalLength(signalLength);
-		}
+        // Signal length onTime
+        seperatorSignalLength = command->indexOf(TIME);
+        int signalLength = -1;
+        if (seperatorSignalLength != -1) {
+            signalLength = getNextNumberOfString(command,
+                    seperatorSignalLength);
+            if (signalLength > 5000) {
+                //signaleLength max 5000ms
+                signalLength = 5000;
+            }
+            emsChannels[currentChannel]->setSignalLength(signalLength);
+        }
 
-		// Signal Intensity
-		seperatorSignalIntensity = command->indexOf(INTENSITY);
-		int signalIntensity = -1;
-		if (seperatorSignalIntensity != -1) {
-			signalIntensity = getNextNumberOfString(command,
-					seperatorSignalIntensity);
-			emsChannels[currentChannel]->setIntensity(signalIntensity - 1);
-		}
+        // Signal Intensity
+        seperatorSignalIntensity = command->indexOf(INTENSITY);
+        int signalIntensity = -1;
+        if (seperatorSignalIntensity != -1) {
+            signalIntensity = getNextNumberOfString(command,
+                    seperatorSignalIntensity);
+            emsChannels[currentChannel]->setIntensity(signalIntensity - 1);
+        }
 
-		// Apply the command
-		//int seperatAction = command->indexOf(ACTION);
-		//bool action = false;
-//		if (seperatAction != -1) {
-//			action = true;
-//		}
+        // Switching Board Electrodes
+        seperatorElectrodes = command->indexOf(ELECTRODE);
+        if (seperatorElectrodes != -1) {
+            if (seperatorElectrodes + 1 + 16 <= command->length()) {
+                String electrodeString = command->substring(seperatorElectrodes + 1, seperatorElectrodes + 1 + 16);
+                
+                currentElectrodes = 0;
+                for (int bit = 0; bit < 16; bit++) {
+                    if (electrodeString.charAt(bit) == '1') {
+                        currentElectrodes |= (1 << (15 - bit));
+                    }
+                }
+            } else {
+                debug_println(F("EMS_ERR: Malformed 'E' command!"));
+            }
+        }
 
-		if (currentChannel >= 0 && currentChannel < current_channel_count) {
-			emsChannels[currentChannel]->activate();
-			emsChannels[currentChannel]->applySignal();
-		} else {
-			//deactivate all channels if channelNumber is wrong
-			shutDown();
-		}
+        // Apply the command
+        //int seperatAction = command->indexOf(ACTION);
+        //bool action = false;
+//      if (seperatAction != -1) {
+//          action = true;
+//      }
 
-	} else {
-		debug_println(F("Command == NULL!"));
-	}
+        if (currentChannel >= 0 && currentChannel < current_channel_count) {
+            
+            setSwitchingBoard(currentElectrodes); 
+            
+            emsChannels[currentChannel]->activate();
+            emsChannels[currentChannel]->applySignal();
+        } else {
+            //deactivate all channels if channelNumber is wrong
+            shutDown();
+        }
+
+    } else {
+        debug_println(F("Command == NULL!"));
+    }
 
 }
 
 void EMSSystem::shutDown() {
-	for (int i = 0; i < current_channel_count; i++) {
-		emsChannels[i]->deactivate();
-	}
+    setSwitchingBoard(0); 
+    
+    for (int i = 0; i < current_channel_count; i++) {
+        emsChannels[i]->deactivate();
+    }
 }
 
 /* TODO change to set commands */
 
 void EMSSystem::setOption(String *option) {
-	char secChar = option->charAt(2);
-	int channel = -1;
-	int value = -1;
-	switch (option->charAt(1)) {
-	case 'C':
-		if (secChar == 'T' && getChannelAndValue(option, &channel, &value)) {
-			//set changeTime
-			//emsChannels[channel]->setIncreaseDecreaseTime(value);
-		}
-		break;
-	case 'M':
-		if (secChar == 'A' && getChannelAndValue(option, &channel, &value)) {
-			//Maxixum value for the calibration
-			emsChannels[channel]->setMaxIntensity(value);
-		} else if (secChar == 'I'
-				&& getChannelAndValue(option, &channel, &value)) {
-			//Minimum value for the calibration
-			emsChannels[channel]->setMinIntensity(value);
-		}
-		break;
+    char secChar = option->charAt(2);
+    int channel = -1;
+    int value = -1;
+    switch (option->charAt(1)) {
+    case 'C':
+        if (secChar == 'T' && getChannelAndValue(option, &channel, &value)) {
+            //set changeTime
+            //emsChannels[channel]->setIncreaseDecreaseTime(value);
+        }
+        break;
+    case 'M':
+        if (secChar == 'A' && getChannelAndValue(option, &channel, &value)) {
+            //Maxixum value for the calibration
+            emsChannels[channel]->setMaxIntensity(value);
+        } else if (secChar == 'I'
+                && getChannelAndValue(option, &channel, &value)) {
+            //Minimum value for the calibration
+            emsChannels[channel]->setMinIntensity(value);
+        }
+        break;
 
-	default:
-		break;
-	}
+    default:
+        break;
+    }
 
 }
 
 bool EMSSystem::getChannelAndValue(String *option, int *channel, int *value) {
-	int left = option->indexOf('[');
-	int right = option->lastIndexOf(']');
-	int seperator = option->indexOf(',', left + 1);
+    int left = option->indexOf('[');
+    int right = option->lastIndexOf(']');
+    int seperator = option->indexOf(',', left + 1);
 
-	if (left < seperator && seperator < right && left != -1 && right != -1
-			&& seperator != -1) {
-		String help = option->substring(left + 1, seperator);
-		(*channel) = help.toInt();
-		help = option->substring(seperator + 1, right);
-		(*value) = help.toInt();
+    if (left < seperator && seperator < right && left != -1 && right != -1
+            && seperator != -1) {
+        String help = option->substring(left + 1, seperator);
+        (*channel) = help.toInt();
+        help = option->substring(seperator + 1, right);
+        (*value) = help.toInt();
 
-		//Parsing successful
-		//Check whether channel exists
-		return isInRange((*channel));
-	}
+        //Parsing successful
+        //Check whether channel exists
+        return isInRange((*channel));
+    }
 //Parsing not successful
-	return false;
+    return false;
 }
 
 bool EMSSystem::isInRange(int channel) {
-	return (channel >= 0 && channel < current_channel_count);
+    return (channel >= 0 && channel < current_channel_count);
 }
 
 uint8_t EMSSystem::check() {
-	uint8_t stopCount = 0;
-	for (uint8_t i = 0; i < current_channel_count; i++) {
-		stopCount = stopCount + emsChannels[i]->check();
-	}
-	return stopCount;
+    uint8_t stopCount = 0;
+    for (uint8_t i = 0; i < current_channel_count; i++) {
+        stopCount = stopCount + emsChannels[i]->check();
+    }
+    return stopCount;
 }
 
 void EMSSystem::doCommand(String *command) {
-	if (command->length() > 0) {
-		if (command->indexOf(ACTION) != -1) {
-			doActionCommand(command);
-		} else if (command->charAt(0) == OPTION) {
-			setOption(command);
-		} else {
-			debug_print("EMS SYSTEM: Unknown command: ");
-			debug_println((*command));
-		}
-	}
+    if (command->length() > 0) {
+        if (command->indexOf(ACTION) != -1) {
+            doActionCommand(command);
+        } else if (command->charAt(0) == OPTION) {
+            setOption(command);
+        } else {
+            debug_print("EMS SYSTEM: Unknown command: ");
+            debug_println((*command));
+        }
+    }
 }
 
 void EMSSystem::start() {
-	EMSChannel::start();
+    EMSChannel::start();
+}
+
+/**
+ * @brief Controls the 16-electrode switching board.
+ * This function is a placeholder. You must implement the logic 
+ * specific to your hardware (e.g., SPI, I2C, shift registers).
+ * @param mask A 16-bit bitmask of active electrodes.
+ */
+void EMSSystem::setSwitchingBoard(uint16_t mask) {
+    // --- YOUR HARDWARE LOGIC GOES HERE ---
+    
+    // Example for SPI / Shift Registers:
+    /*
+    digitalWrite(LATCH_PIN, LOW);
+    // Send the high byte (electrodes 1-8)
+    shiftOut(DATA_PIN, CLOCK_PIN, MSBFIRST, (mask >> 8) & 0xFF); 
+    // Send the low byte (electrodes 9-16)
+    shiftOut(DATA_PIN, CLOCK_PIN, MSBFIRST, mask & 0xFF);        
+    digitalWrite(LATCH_PIN, HIGH);
+    */
+    
+    // For now, let's just debug-print the mask
+    debug_println(F("\tSWITCH_BOARD: Set mask to "));
+    // debug_println(mask, BIN);
 }
