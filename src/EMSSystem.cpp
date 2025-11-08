@@ -39,6 +39,10 @@ void EMSSystem::addChannelToSystem(EMSChannel *emsChannel) {
     }
 }
 
+void EMSSystem::addSwitchingBoardToSystem(SwitchingBoard *switchingBoard) {
+    this->switchingBoard = switchingBoard;
+}
+
 // get the next number out of a String object and return it
 int EMSSystem::getNextNumberOfString(String *command, uint8_t startIndex) {
     int value = 0;
@@ -126,7 +130,7 @@ void EMSSystem::doActionCommand(String *command) {
 
         if (currentChannel >= 0 && currentChannel < current_channel_count) {
             
-            setSwitchingBoard(currentElectrodes); 
+            this->switchingBoard->setSwitchingBoard(currentElectrodes); 
             
             emsChannels[currentChannel]->activate();
             emsChannels[currentChannel]->applySignal();
@@ -142,7 +146,7 @@ void EMSSystem::doActionCommand(String *command) {
 }
 
 void EMSSystem::shutDown() {
-    setSwitchingBoard(0); 
+    this->switchingBoard->setSwitchingBoard(0); 
     
     for (int i = 0; i < current_channel_count; i++) {
         emsChannels[i]->deactivate();
@@ -226,28 +230,4 @@ void EMSSystem::doCommand(String *command) {
 
 void EMSSystem::start() {
     EMSChannel::start();
-}
-
-/**
- * @brief Controls the 16-electrode switching board.
- * This function is a placeholder. You must implement the logic 
- * specific to your hardware (e.g., SPI, I2C, shift registers).
- * @param mask A 16-bit bitmask of active electrodes.
- */
-void EMSSystem::setSwitchingBoard(uint16_t mask) {
-    // --- YOUR HARDWARE LOGIC GOES HERE ---
-    
-    // Example for SPI / Shift Registers:
-    /*
-    digitalWrite(LATCH_PIN, LOW);
-    // Send the high byte (electrodes 1-8)
-    shiftOut(DATA_PIN, CLOCK_PIN, MSBFIRST, (mask >> 8) & 0xFF); 
-    // Send the low byte (electrodes 9-16)
-    shiftOut(DATA_PIN, CLOCK_PIN, MSBFIRST, mask & 0xFF);        
-    digitalWrite(LATCH_PIN, HIGH);
-    */
-    
-    // For now, let's just debug-print the mask
-    debug_println(F("\tSWITCH_BOARD: Set mask to "));
-    // debug_println(mask, BIN);
 }

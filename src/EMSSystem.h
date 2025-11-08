@@ -21,6 +21,7 @@
 #ifndef EMSSYSTEM_H_
 #define EMSSYSTEM_H_
 
+#include "SwitchingBoard.h"
 #include "EMSChannel.h"
 #include "Debug.h"
 
@@ -37,6 +38,7 @@ public:
 	virtual ~EMSSystem();
 
 	virtual void addChannelToSystem(EMSChannel *emsChannel);
+    virtual void addSwitchingBoardToSystem(SwitchingBoard *switchingBoard);
 	virtual void doCommand(String *command);
 	void shutDown();
 	virtual uint8_t check();
@@ -50,11 +52,11 @@ protected:
 
 private:
 	EMSChannel **emsChannels;
+    SwitchingBoard *switchingBoard;
 	uint8_t maximum_channel_count;
 	uint8_t current_channel_count;
 	bool isInRange(int channel);
     uint16_t currentElectrodes;
-    void setSwitchingBoard(uint16_t mask);
 };
 
 #endif /* EMSSYSTEM_H_ */
