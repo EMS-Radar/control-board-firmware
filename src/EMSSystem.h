@@ -56,7 +56,8 @@ private:
 	uint8_t maximum_channel_count;
 	uint8_t current_channel_count;
 	bool isInRange(int channel);
-    uint16_t currentElectrodes;
+    uint64_t currentElectrodes;
+    uint8_t switchingBoardPinCount;
 };
 
 #endif /* EMSSYSTEM_H_ */

@@ -14,7 +14,8 @@
 class SwitchingBoard {
 public:
 	SwitchingBoard(uint8_t numPins);
-    void setSwitchingBoard(uint16_t mask);
+    void setSwitchingBoard(uint64_t mask);
+    uint8_t getPinCount();
 
 protected:
 

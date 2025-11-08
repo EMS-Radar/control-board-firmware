@@ -26,6 +26,9 @@ EMSSystem::EMSSystem(uint8_t channels) {
     maximum_channel_count = channels;
     current_channel_count = 0;
     currentElectrodes = 0;
+    
+    switchingBoard = NULL;
+    switchingBoardPinCount = 0; 
 }
 
 EMSSystem::~EMSSystem() {
@@ -41,6 +44,15 @@ void EMSSystem::addChannelToSystem(EMSChannel *emsChannel) {
 
 void EMSSystem::addSwitchingBoardToSystem(SwitchingBoard *switchingBoard) {
     this->switchingBoard = switchingBoard;
+    
+    if (switchingBoard != NULL) {
+        this->switchingBoardPinCount = this->switchingBoard->getPinCount();
+        debug_print(F("SWITCH_BOARD: Added with "));
+        debug_print((char *)this->switchingBoardPinCount);
+        debug_println(F(" pins."));
+    } else {
+        this->switchingBoardPinCount = 0;
+    }
 }
 
 // get the next number out of a String object and return it
@@ -107,46 +119,51 @@ void EMSSystem::doActionCommand(String *command) {
         // Switching Board Electrodes
         seperatorElectrodes = command->indexOf(ELECTRODE);
         if (seperatorElectrodes != -1) {
-            if (seperatorElectrodes + 1 + 16 <= command->length()) {
-                String electrodeString = command->substring(seperatorElectrodes + 1, seperatorElectrodes + 1 + 16);
-                
-                currentElectrodes = 0;
-                for (int bit = 0; bit < 16; bit++) {
-                    if (electrodeString.charAt(bit) == '1') {
-                        currentElectrodes |= (1 << (15 - bit));
+            if (switchingBoardPinCount > 0) { 
+                if (seperatorElectrodes + 1 + switchingBoardPinCount <= command->length()) {
+                    String electrodeString = command->substring(seperatorElectrodes + 1, seperatorElectrodes + 1 + switchingBoardPinCount);
+                    
+                    currentElectrodes = 0;
+                    for (int bit = 0; bit < switchingBoardPinCount; bit++) {
+                        if (electrodeString.charAt(bit) == '1') {
+                            currentElectrodes |= (1ULL << (switchingBoardPinCount - 1 - bit));
+                        }
                     }
+                } else {
+                    debug_println(F("EMS_ERR: Malformed 'E' command! Wrong length."));
                 }
             } else {
-                debug_println(F("EMS_ERR: Malformed 'E' command!"));
+                 debug_println(F("EMS_WARN: 'E' command rcvd, but no board configured."));
             }
         }
 
         // Apply the command
-        //int seperatAction = command->indexOf(ACTION);
-        //bool action = false;
-//      if (seperatAction != -1) {
-//          action = true;
-//      }
+        // int seperatAction = command->indexOf(ACTION);
+        // bool action = false;
+        // if (seperatAction != -1) {
+        //     action = true;
+        // }
 
         if (currentChannel >= 0 && currentChannel < current_channel_count) {
-            
-            this->switchingBoard->setSwitchingBoard(currentElectrodes); 
+            if (this->switchingBoard != NULL) {
+                this->switchingBoard->setSwitchingBoard(currentElectrodes); 
+            }
             
             emsChannels[currentChannel]->activate();
             emsChannels[currentChannel]->applySignal();
         } else {
-            //deactivate all channels if channelNumber is wrong
             shutDown();
         }
 
     } else {
         debug_println(F("Command == NULL!"));
     }
-
 }
 
 void EMSSystem::shutDown() {
-    this->switchingBoard->setSwitchingBoard(0); 
+    if (this->switchingBoard != NULL) {
+        this->switchingBoard->setSwitchingBoard(0); 
+    }
     
     for (int i = 0; i < current_channel_count; i++) {
         emsChannels[i]->deactivate();
