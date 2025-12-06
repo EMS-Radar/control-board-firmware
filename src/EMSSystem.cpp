@@ -148,12 +148,18 @@ void EMSSystem::doActionCommand(String *command) {
                     }
 
                     if (isHex) {
-                        for (int i = 0; i < numBytes; i++) {
-                            char highNibble = hexString.charAt(i * 2);
-                            char lowNibble  = hexString.charAt(i * 2 + 1);
-                            
-                            byte val = (hexCharToInt(highNibble) << 4) | hexCharToInt(lowNibble);
-                            currentElectrodes |= ((uint64_t)val << (i * 8));
+                        int numNibbles = expectedHexLen;
+                        int totalBits = switchingBoardPinCount;
+                        for (int n = 0; n < numNibbles; n++) {
+                            byte nibVal = hexCharToInt(hexString.charAt(n));
+                            for (int k = 0; k < 4; k++) {
+                                if (nibVal & (1 << k)) {
+                                    int globalBit = totalBits - 1 - (n * 4) - k;
+                                    if (globalBit >= 0 && globalBit < totalBits) {
+                                        currentElectrodes |= (1ULL << globalBit);
+                                    }
+                                }
+                            }
                         }
                         parsed = true;
                     }
