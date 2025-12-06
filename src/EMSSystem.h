@@ -49,6 +49,7 @@ protected:
 	virtual void setOption(String *option);
 	virtual bool getChannelAndValue(String *option, int *channel, int *value);
 	virtual int getNextNumberOfString(String *command, uint8_t startIndex);
+    virtual byte hexCharToInt(char c);
 
 private:
 	EMSChannel **emsChannels;

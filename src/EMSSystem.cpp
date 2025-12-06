@@ -75,6 +75,17 @@ int EMSSystem::getNextNumberOfString(String *command, uint8_t startIndex) {
         return -1;
 }
 
+byte EMSSystem::hexCharToInt(char c)
+{
+    if (c >= '0' && c <= '9')
+        return c - '0';
+    if (c >= 'A' && c <= 'F')
+        return c - 'A' + 10;
+    if (c >= 'a' && c <= 'f')
+        return c - 'a' + 10;
+    return 0;
+}
+
 void EMSSystem::doActionCommand(String *command) {
     int seperatorChannel = -1;
     int seperatorSignalLength = -1;
@@ -119,21 +130,40 @@ void EMSSystem::doActionCommand(String *command) {
         // Switching Board Electrodes
         seperatorElectrodes = command->indexOf(ELECTRODE);
         if (seperatorElectrodes != -1) {
-            if (switchingBoardPinCount > 0) { 
-                if (seperatorElectrodes + 1 + switchingBoardPinCount <= command->length()) {
-                    String electrodeString = command->substring(seperatorElectrodes + 1, seperatorElectrodes + 1 + switchingBoardPinCount);
-                    
-                    currentElectrodes = 0;
-                    for (int bit = 0; bit < switchingBoardPinCount; bit++) {
-                        if (electrodeString.charAt(bit) == '1') {
-                            currentElectrodes |= (1ULL << (switchingBoardPinCount - 1 - bit));
-                        }
+            if (switchingBoardPinCount > 0) {
+                int numBytes = (switchingBoardPinCount + 7) / 8;
+                int expectedHexLen = numBytes * 2;
+                int remaining = command->length() - (seperatorElectrodes + 1);
+
+                currentElectrodes = 0;
+                bool parsed = false;
+                
+                if (remaining >= expectedHexLen) {
+                    String hexString = command->substring(seperatorElectrodes + 1, seperatorElectrodes + 1 + expectedHexLen);
+
+                    bool isHex = true;
+                    for (int i = 0; i < hexString.length(); i++) {
+                        char c = hexString.charAt(i);
+                        if (!((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f'))) { isHex = false; break; }
                     }
-                } else {
-                    debug_println(F("EMS_ERR: Malformed 'E' command! Wrong length."));
+
+                    if (isHex) {
+                        for (int i = 0; i < numBytes; i++) {
+                            char highNibble = hexString.charAt(i * 2);
+                            char lowNibble  = hexString.charAt(i * 2 + 1);
+                            
+                            byte val = (hexCharToInt(highNibble) << 4) | hexCharToInt(lowNibble);
+                            currentElectrodes |= ((uint64_t)val << (i * 8));
+                        }
+                        parsed = true;
+                    }
+                }
+
+                if (!parsed)  {
+                    debug_println(F("EMS_ERR: Malformed 'E' command!"));
                 }
             } else {
-                 debug_println(F("EMS_WARN: 'E' command rcvd, but no board configured."));
+                debug_println(F("EMS_WARN: 'E' command rcvd, but no board configured."));
             }
         }
 
@@ -146,7 +176,8 @@ void EMSSystem::doActionCommand(String *command) {
 
         if (currentChannel >= 0 && currentChannel < current_channel_count) {
             if (this->switchingBoard != NULL) {
-                this->switchingBoard->setSwitchingBoard(currentElectrodes); 
+                this->switchingBoard->setSwitchingBoard(currentElectrodes);
+                this->switchingBoard->enableOutputs(true);
             }
             
             emsChannels[currentChannel]->activate();

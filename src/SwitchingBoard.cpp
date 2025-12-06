@@ -52,6 +52,12 @@ void SwitchingBoard::setSwitchingBoard(uint64_t mask) {
     uint16_t dataBoard1 = (mask >> 16) & 0xFFFF;
     uint16_t dataBoard0 = (mask) & 0xFFFF;
 
+    debug_print(F("\tSWITCH_BOARD: mask: "));
+    for (int i = this->numPins - 1; i >= 0; i--) {
+        debug_print((mask & (1ULL << i)) ? "1" : "0");
+    }
+    debug_println(String(""));
+
     // Begin SPI transaction
     SPI.beginTransaction(spiSettings);
 
