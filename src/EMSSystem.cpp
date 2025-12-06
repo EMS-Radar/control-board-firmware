@@ -48,7 +48,7 @@ void EMSSystem::addSwitchingBoardToSystem(SwitchingBoard *switchingBoard) {
     if (switchingBoard != NULL) {
         this->switchingBoardPinCount = this->switchingBoard->getPinCount();
         debug_print(F("SWITCH_BOARD: Added with "));
-        debug_print((char *)this->switchingBoardPinCount);
+        debug_print(String(this->switchingBoardPinCount));
         debug_println(F(" pins."));
     } else {
         this->switchingBoardPinCount = 0;
@@ -142,7 +142,7 @@ void EMSSystem::doActionCommand(String *command) {
                     String hexString = command->substring(seperatorElectrodes + 1, seperatorElectrodes + 1 + expectedHexLen);
 
                     bool isHex = true;
-                    for (int i = 0; i < hexString.length(); i++) {
+                    for (unsigned int i = 0; i < hexString.length(); i++) {
                         char c = hexString.charAt(i);
                         if (!((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f'))) { isHex = false; break; }
                     }
