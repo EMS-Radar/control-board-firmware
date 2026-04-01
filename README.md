@@ -11,15 +11,6 @@ This is the firmware for the EMS-Radar control board. It is based on the Arduino
 - **EMSChannel**: Individual channel abstraction for each stimulation output
 - **SwitchingBoard**: Hardware abstraction layer for electrode switching and intensity control
 
-### Communication Protocol
-
-The system accepts commands via Bluetooth or USB in the following format:
-- `ACTION` (G): General control commands
-- `CHANNEL` (C): Select target channel
-- `INTENSITY` (I): Set stimulation intensity
-- `TIME` (T): Set stimulation duration
-- `OPTION` (O): Additional parameters
-- `ELECTRODE` (E): Electrode selection
 
 ## Building and Uploading
 
